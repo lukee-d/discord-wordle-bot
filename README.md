@@ -44,6 +44,7 @@ A comprehensive Discord bot that brings an enhanced Wordle experience to your se
 | Command | Description |
 |---------|-------------|
 | `/betterwordle` | Start a new Better Wordle game with interactive interface |
+| `/help` | Show all commands and how to play (great for new users!) |
 | `/mystats` | View your personal detailed statistics and achievements |
 | `/leaderboard [category]` | View server leaderboards (winrate/streak/games/average) |
 | `/results` | View today's server results and completions |
@@ -113,7 +114,8 @@ python app.py
 ## Usage
 
 ### Starting Games
-- Use `/wordlebot` to start a new game
+- Use `/betterwordle` to start a new game
+- New to the bot? Try `/help` for a complete guide!
 - Click "Make Guess" button to enter your 5-letter word
 - Get instant feedback with colored squares
 - Try to guess the word in 6 attempts!

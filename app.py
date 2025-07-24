@@ -1075,6 +1075,62 @@ async def clear_user_data(interaction: discord.Interaction):
     
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
+@bot.tree.command(name="help", description="Show all Better Wordle commands and how to play")
+async def help_command(interaction: discord.Interaction):
+    embed = discord.Embed(title="🎯 Better Wordle - Help & Commands", color=0x5865F2)
+    
+    # Game commands
+    embed.add_field(name="🎮 Game Commands", 
+                   value="**`/betterwordle`** - Start today's daily puzzle\n" +
+                         "**`/results`** - View today's server results\n" +
+                         "**`/streak`** - Check current server streak", 
+                   inline=False)
+    
+    # Stats commands
+    embed.add_field(name="📊 Statistics & Leaderboards", 
+                   value="**`/mystats`** - View your detailed personal stats\n" +
+                         "**`/leaderboard [category]`** - Server leaderboards\n" +
+                         "└ Categories: `winrate`, `streak`, `games`, `average`", 
+                   inline=False)
+    
+    # Admin commands
+    embed.add_field(name="⚙️ Server Setup (Admin Only)", 
+                   value="**`/setchannel [channel]`** - Enable daily summaries\n" +
+                         "└ Requires 'Manage Channels' permission", 
+                   inline=False)
+    
+    # How to play
+    embed.add_field(name="🎯 How to Play", 
+                   value="1️⃣ Use `/betterwordle` to start\n" +
+                         "2️⃣ Click **'Make Guess'** button\n" +
+                         "3️⃣ Enter a 5-letter word\n" +
+                         "4️⃣ Get feedback and repeat!\n\n" +
+                         "🟩 = Right letter, right spot\n" +
+                         "🟨 = Right letter, wrong spot\n" +
+                         "⬜ = Letter not in word", 
+                   inline=False)
+    
+    # Features highlight
+    embed.add_field(name="✨ Features", 
+                   value="• **Interactive UI** - Click buttons instead of typing\n" +
+                         "• **Visual keyboard** - See which letters you've tried\n" +
+                         "• **Daily streaks** - Server-wide streak tracking\n" +
+                         "• **Advanced stats** - Personal analytics & achievements\n" +
+                         "• **Automatic summaries** - Daily results at midnight\n" +
+                         "• **Official word lists** - 13,000+ valid words", 
+                   inline=False)
+    
+    embed.add_field(name="💡 Pro Tips", 
+                   value="• Start with words like **ADIEU**, **SLATE**, or **CRANE**\n" +
+                         "• Check `/mystats` to see your favorite starting words\n" +
+                         "• Compete on `/leaderboard` for different categories\n" +
+                         "• Set up daily summaries with `/setchannel`", 
+                   inline=False)
+    
+    embed.set_footer(text="🎮 Everyone gets the same word each day! Good luck!")
+    
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
 @bot.tree.command(name="launch", description="Launch an activity")
 async def launch(interaction: discord.Interaction):
     embed = discord.Embed(title="🚀 Activity Not Available", color=0xFEE75C)
