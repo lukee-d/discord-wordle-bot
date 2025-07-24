@@ -15,11 +15,16 @@ intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
 # official wordle list
-with open("wordle-answers-alphabetical.txt") as f:
-    ANSWER_WORDS = [line.strip() for line in f]
-
-with open("wordle-allowed-guesses.txt") as f:
-    VALID_GUESSES = set(line.strip() for line in f)
+try:
+    with open("wordle-answers-alphabetical.txt") as f:
+        ANSWER_WORDS = [line.strip() for line in f]
+    
+    with open("wordle-allowed-guesses.txt") as f:
+        VALID_GUESSES = set(line.strip() for line in f)
+except FileNotFoundError:
+    print("Error: Word list files not found!")
+    print("Make sure wordle-answers-alphabetical.txt and wordle-allowed-guesses.txt are uploaded")
+    exit(1)
 
 ALL_VALID_WORDS = set(ANSWER_WORDS).union(VALID_GUESSES)
 
@@ -27,27 +32,31 @@ ALL_VALID_WORDS = set(ANSWER_WORDS).union(VALID_GUESSES)
 active_games = {}  # Maps user ID to game data
 daily_results = {}  # Maps guild_id -> {date: {user_id: result}}
 guild_settings = {}  # Maps guild_id -> {channel_id: str, streak_count: int, last_streak_date: str}
+user_stats = {}  # Maps user_id -> {games_played, games_won, guess_distribution, current_streak, max_streak, total_time, first_guesses}
 DATA_FILE = "wordle_data.json"
 
 def load_data():
     """Load saved game data"""
-    global daily_results, guild_settings
+    global daily_results, guild_settings, user_stats
     if os.path.exists(DATA_FILE):
         try:
             with open(DATA_FILE, 'r') as f:
                 data = json.load(f)
                 daily_results = data.get('daily_results', {})
                 guild_settings = data.get('guild_settings', {})
+                user_stats = data.get('user_stats', {})
         except:
             daily_results = {}
             guild_settings = {}
+            user_stats = {}
 
 def save_data():
     """Save game data"""
     with open(DATA_FILE, 'w') as f:
         json.dump({
             'daily_results': daily_results,
-            'guild_settings': guild_settings
+            'guild_settings': guild_settings,
+            'user_stats': user_stats
         }, f, indent=2)
 
 def get_today_string():
@@ -104,6 +113,101 @@ def get_date_string_days_ago(days):
     target_date = datetime.date.today() - datetime.timedelta(days=days)
     return target_date.strftime("%Y-%m-%d")
 
+def update_user_stats(user_id, won, guesses, first_guess, game_time=None):
+    """Update user statistics after a game"""
+    user_id = str(user_id)
+    
+    if user_id not in user_stats:
+        user_stats[user_id] = {
+            'games_played': 0,
+            'games_won': 0,
+            'guess_distribution': {'1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0},
+            'current_streak': 0,
+            'max_streak': 0,
+            'total_time': 0,
+            'first_guesses': {},
+            'average_guesses': 0.0,
+            'last_played': None
+        }
+    
+    stats = user_stats[user_id]
+    stats['games_played'] += 1
+    
+    if won:
+        stats['games_won'] += 1
+        stats['guess_distribution'][str(guesses)] += 1
+        
+        # Update streak
+        today = get_today_string()
+        yesterday = get_yesterday_string()
+        
+        if stats['last_played'] == yesterday or stats['last_played'] is None:
+            stats['current_streak'] += 1
+        else:
+            stats['current_streak'] = 1
+        
+        if stats['current_streak'] > stats['max_streak']:
+            stats['max_streak'] = stats['current_streak']
+    else:
+        stats['current_streak'] = 0
+    
+    stats['last_played'] = get_today_string()
+    
+    # Track first guess patterns
+    if first_guess in stats['first_guesses']:
+        stats['first_guesses'][first_guess] += 1
+    else:
+        stats['first_guesses'][first_guess] = 1
+    
+    # Update average guesses (only for won games)
+    if stats['games_won'] > 0:
+        total_guesses = sum(int(k) * v for k, v in stats['guess_distribution'].items())
+        stats['average_guesses'] = round(total_guesses / stats['games_won'], 2)
+    
+    if game_time:
+        stats['total_time'] += game_time
+    
+    save_data()
+
+def get_keyboard_display(guesses):
+    """Generate a clean visual keyboard that works properly in Discord"""
+    keyboard_layout = [
+        ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+        ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+        ['Z', 'X', 'C', 'V', 'B', 'N', 'M']
+    ]
+    
+    letter_status = {}  # Track best status for each letter
+    
+    # Analyze all guesses to determine letter status
+    for guess, feedback in guesses:
+        for i, letter in enumerate(guess.upper()):
+            if feedback[i] == "🟩":  # Correct position
+                letter_status[letter] = "🟩"
+            elif feedback[i] == "🟨" and letter_status.get(letter) != "🟩":  # Wrong position but in word
+                letter_status[letter] = "🟨"
+            elif feedback[i] == "⬜" and letter not in letter_status:  # Not in word
+                letter_status[letter] = "⬜"
+    
+    # Build visual keyboard display
+    keyboard_display = ""
+    for row in keyboard_layout:
+        row_display = ""
+        for letter in row:
+            if letter in letter_status:
+                if letter_status[letter] == "🟩":
+                    row_display += f"🟩{letter} "  # Green background
+                elif letter_status[letter] == "🟨":
+                    row_display += f"🟨{letter} "  # Yellow background
+                else:  # ⬜
+                    row_display += f"⬜{letter} "  # Gray background
+            else:
+                row_display += f"⬛{letter} "  # Black background (unused)
+        keyboard_display += row_display.rstrip() + "\n"
+
+    
+    return keyboard_display
+
 def get_daily_word():
     """Get today's word"""
     today = datetime.date.today()
@@ -147,6 +251,7 @@ class WordleGame:
         self.won = False
         self.user_id = user_id
         self.guild_id = guild_id
+        self.start_time = datetime.datetime.now()
     
     def make_guess(self, guess):
         guess = guess.lower()
@@ -179,12 +284,30 @@ class WordleGame:
         
         return board
     
+    def get_enhanced_board_display(self):
+        """Enhanced board display with progress indicators"""
+        board = ""
+        for i, (guess, feedback) in enumerate(self.guesses):
+            board += f"**{i+1}.** `{guess.upper()}` {feedback}\n"
+        
+        # Add empty rows with numbers
+        for i in range(len(self.guesses), self.max_guesses):
+            board += f"**{i+1}.** `_____` ⬜⬜⬜⬜⬜\n"
+        
+        return board
+    
+    def get_game_time(self):
+        """Get time spent on the game in seconds"""
+        if self.completed:
+            return (datetime.datetime.now() - self.start_time).total_seconds()
+        return 0
+    
     def get_result_string(self):
         """Get the shareable result string like real Wordle"""
         if not self.completed:
             return None
         
-        result = f"Wordle {get_today_string()} "
+        result = f"Better Wordle {get_today_string()} "
         if self.won:
             result += f"{len(self.guesses)}/6\n\n"
         else:
@@ -214,23 +337,33 @@ async def post_daily_summary(guild_id):
     if not channel:
         return
     
+    # Get yesterday's word
+    yesterday_date = datetime.date.today() - datetime.timedelta(days=1)
+    random.seed(yesterday_date.toordinal())
+    yesterday_word = random.choice(ANSWER_WORDS).upper()
+    random.seed()
+    
     # Get yesterday's results
     if (guild_id not in daily_results or 
         yesterday not in daily_results[guild_id] or 
         len(daily_results[guild_id][yesterday]) == 0):
         # No one played yesterday
         embed = discord.Embed(title="📊 Daily Better Wordle Summary", color=0xED4245)
-        embed.add_field(name="No Activity Yesterday", 
-                       value="No one completed yesterday's Better Wordle! 😔\nStreak broken.", 
+        embed.add_field(name="💔 No Activity Yesterday", 
+                       value=f"No one completed yesterday's Better Wordle! 😔\n**Yesterday's word was: {yesterday_word}**\nStreak broken.", 
                        inline=False)
+        embed.set_footer(text=f"Date: {yesterday}")
         await channel.send(embed=embed)
         return
     
     results_data = daily_results[guild_id][yesterday]
     streak_count = guild_settings[guild_id].get('streak_count', 0)
     
-    # Create the summary embed like the image
+    # Create the enhanced summary embed
     embed = discord.Embed(title="📊 Daily Better Wordle Summary", color=0x5865F2)
+    
+    # Add yesterday's word
+    embed.add_field(name="🎯 Yesterday's Word", value=f"**{yesterday_word}**", inline=False)
     
     # Add streak info
     if streak_count > 0:
@@ -262,22 +395,45 @@ async def post_daily_summary(guild_id):
     result_lines = []
     for score in ["1/6", "2/6", "3/6", "4/6", "5/6", "6/6", "X/6"]:
         if score in score_groups:
-            users = " ".join([f"@{name}" for name in score_groups[score]])
+            users = " • ".join([f"**{name}**" for name in score_groups[score]])
             if score == "1/6":
                 result_lines.append(f"👑 {score}: {users}")
+            elif score == "2/6":
+                result_lines.append(f"🥇 {score}: {users}")
             elif score == "X/6":
                 result_lines.append(f"❌ {score}: {users}")
             else:
                 result_lines.append(f"✅ {score}: {users}")
     
-    embed.add_field(name="Results", value="\n".join(result_lines), inline=False)
+    embed.add_field(name="🏆 Results", value="\n".join(result_lines), inline=False)
     
-    # Add some stats
+    # Add enhanced stats
     total_players = len(results_data)
     winners = sum(1 for r in results_data.values() if r['won'])
-    embed.add_field(name="📈 Stats", 
-                   value=f"**Players:** {total_players} | **Success Rate:** {round(winners/total_players*100)}%", 
-                   inline=False)
+    
+    # Calculate average guesses for winners
+    total_guesses = sum(r['guesses'] for r in results_data.values() if r['won'])
+    avg_guesses = round(total_guesses / winners, 1) if winners > 0 else 0
+    
+    # Find fastest solver if time data exists
+    fastest_time = None
+    fastest_player = None
+    for user_id, result in results_data.items():
+        if result['won'] and 'game_time' in result and result['game_time'] < 300:  # Less than 5 minutes
+            if fastest_time is None or result['game_time'] < fastest_time:
+                fastest_time = result['game_time']
+                fastest_player = result['username']
+    
+    stats_text = f"**Players:** {total_players} | **Success Rate:** {round(winners/total_players*100)}%"
+    if avg_guesses > 0:
+        stats_text += f" | **Avg Guesses:** {avg_guesses}"
+    if fastest_player:
+        time_str = f"{int(fastest_time // 60)}m {int(fastest_time % 60)}s" if fastest_time >= 60 else f"{int(fastest_time)}s"
+        stats_text += f"\n⚡ **Fastest:** {fastest_player} ({time_str})"
+    
+    embed.add_field(name="📈 Stats", value=stats_text, inline=False)
+    
+    embed.set_footer(text=f"Date: {yesterday} • Use /betterwordle to play today!")
     
     await channel.send(embed=embed)
 
@@ -348,15 +504,28 @@ class GuessModal(discord.ui.Modal, title='Make a Guess'):
         
         # Create the updated board display
         embed = discord.Embed(title="🎯 Better Wordle", color=0x2F3136)
-        embed.add_field(name="Your Progress", value=self.game.get_board_display(), inline=False)
-        embed.add_field(name=f"Guesses: {len(self.game.guesses)}/{self.game.max_guesses}", value="\u200b", inline=False)
+        embed.add_field(name="📋 Your Progress", value=self.game.get_enhanced_board_display(), inline=False)
         
-        # Show the guess that was just made
+        # Add keyboard display
+        if len(self.game.guesses) > 0:
+            keyboard = get_keyboard_display(self.game.guesses)
+            embed.add_field(name="⌨️ Keyboard", value=f"```\n{keyboard}\n```", inline=False)
+        
+        embed.add_field(name=f"📊 Progress: {len(self.game.guesses)}/{self.game.max_guesses}", value="\u200b", inline=False)
+        
+        # Show the guess that was just made with better formatting
         embed.add_field(name="✅ Valid Guess!", 
                        value=f"**'{guess_word.upper()}'** {feedback}", 
                        inline=False)
         
         if self.game.completed:
+            # Calculate game time
+            game_time = self.game.get_game_time()
+            
+            # Update user statistics
+            first_guess = self.game.guesses[0][0] if self.game.guesses else None
+            update_user_stats(user_id, self.game.won, len(self.game.guesses), first_guess, game_time)
+            
             # Save result to daily results
             guild_id = str(self.game.guild_id)
             today = get_today_string()
@@ -370,16 +539,33 @@ class GuessModal(discord.ui.Modal, title='Make a Guess'):
                 'won': self.game.won,
                 'guesses': len(self.game.guesses),
                 'result_string': self.game.get_result_string(),
-                'username': interaction.user.display_name
+                'username': interaction.user.display_name,
+                'game_time': round(game_time)
             }
             save_data()
             
             if self.game.won:
-                embed.add_field(name="🎉 Congratulations!", value=f"You got it in {len(self.game.guesses)} guesses!", inline=False)
-                embed.color = 0x57F287
+                # Different colors and messages based on performance
+                if len(self.game.guesses) == 1:
+                    embed.add_field(name="🤯 INCREDIBLE!", value="Got it in 1 guess! Are you psychic?! 🔮", inline=False)
+                    embed.color = 0xFFD700  # Gold
+                elif len(self.game.guesses) <= 2:
+                    embed.add_field(name="🏆 AMAZING!", value=f"Solved in {len(self.game.guesses)} guesses! Brilliant! ⭐", inline=False)
+                    embed.color = 0xFFD700  # Gold
+                elif len(self.game.guesses) <= 4:
+                    embed.add_field(name="🎉 Great job!", value=f"Solved in {len(self.game.guesses)} guesses! Well done! 👏", inline=False)
+                    embed.color = 0x57F287  # Green
+                else:
+                    embed.add_field(name="✅ Nice work!", value=f"Got it in {len(self.game.guesses)} guesses! 🎯", inline=False)
+                    embed.color = 0x5865F2  # Blue
+                
+                # Add time info if reasonable
+                if game_time < 300:  # Less than 5 minutes
+                    time_str = f"{int(game_time // 60)}m {int(game_time % 60)}s" if game_time >= 60 else f"{int(game_time)}s"
+                    embed.add_field(name="⏱️ Time", value=time_str, inline=True)
             else:
-                embed.add_field(name="😔 Game Over", value=f"The word was: **{self.game.answer.upper()}**", inline=False)
-                embed.color = 0xED4245
+                embed.add_field(name="😔 Game Over", value=f"The word was: **{self.game.answer.upper()}**\nBetter luck next time! 💪", inline=False)
+                embed.color = 0xED4245  # Red
             
             # Remove the game from active games
             if user_id in active_games:
@@ -468,12 +654,20 @@ async def betterwordle(interaction: discord.Interaction):
     game = WordleGame(word, user_id, guild_id)
     active_games[user_id] = game
     
-    # Create initial embed
-    embed = discord.Embed(title="🎯 Better Wordle - Daily Challenge", color=0x2F3136)
-    embed.add_field(name="Your Progress", value=game.get_board_display(), inline=False)
-    embed.add_field(name=f"Guesses: {len(game.guesses)}/{game.max_guesses}", value="\u200b", inline=False)
-    embed.add_field(name="How to Play", value="Click 'Make Guess' to enter your 5-letter word!\n🟩 = Correct letter and position\n🟨 = Correct letter, wrong position\n⬜ = Letter not in word", inline=False)
-    embed.add_field(name="Daily Word", value=f"Everyone gets the same word today!\nDate: {today}", inline=False)
+    # Create initial embed with enhanced design
+    embed = discord.Embed(title="🎯 Better Wordle - Daily Challenge", color=0x5865F2)
+    embed.add_field(name="📋 Your Progress", value=game.get_enhanced_board_display(), inline=False)
+    embed.add_field(name=f"📊 Progress: {len(game.guesses)}/{game.max_guesses}", value="\u200b", inline=False)
+    embed.add_field(name="🎮 How to Play", 
+                   value="Click **'Make Guess'** to enter your 5-letter word!\n" +
+                         "🟩 = Correct letter and position\n" +
+                         "🟨 = Correct letter, wrong position\n" +
+                         "⬜ = Letter not in word", 
+                   inline=False)
+    embed.add_field(name="📅 Daily Challenge", 
+                   value=f"Everyone gets the same word today!\n**Date:** {today}", 
+                   inline=False)
+    embed.set_footer(text="💡 Tip: Common starting words include ADIEU, SLATE, or CRANE!")
     
     view = WordleView(game)
     await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
@@ -525,21 +719,358 @@ async def results(interaction: discord.Interaction):
     
     await interaction.response.send_message(embed=embed)
 
-@bot.tree.command(name="stats", description="Show your Wordle statistics")
-async def stats(interaction: discord.Interaction):
-    try:
+@bot.tree.command(name="mystats", description="View your personal Better Wordle statistics")
+async def my_stats(interaction: discord.Interaction):
+    user_id = str(interaction.user.id)
+    
+    if user_id not in user_stats or user_stats[user_id]['games_played'] == 0:
         embed = discord.Embed(title="📊 Your Better Wordle Stats", color=0x5865F2)
-        embed.add_field(name="Coming Soon!", value="Personal stats tracking will be added in the next update!\nFor now, use `/results` to see today's server results.", inline=False)
+        embed.add_field(name="No Games Yet!", 
+                       value="You haven't played any games yet!\nUse `/betterwordle` to start your first game! 🎯", 
+                       inline=False)
         await interaction.response.send_message(embed=embed, ephemeral=True)
-    except discord.errors.InteractionResponded:
-        # Interaction was already responded to, ignore
-        pass
-    except Exception as e:
-        print(f"Error in stats command: {e}")
-        try:
-            await interaction.followup.send("❌ Something went wrong with the stats command.", ephemeral=True)
-        except:
-            pass
+        return
+    
+    stats = user_stats[user_id]
+    
+    # Calculate win percentage
+    win_percentage = round((stats['games_won'] / stats['games_played']) * 100) if stats['games_played'] > 0 else 0
+    
+    # Create main stats embed
+    embed = discord.Embed(title=f"📊 {interaction.user.display_name}'s Better Wordle Stats", color=0x5865F2)
+    
+    # Main stats
+    embed.add_field(name="🎮 Games Played", value=str(stats['games_played']), inline=True)
+    embed.add_field(name="🏆 Games Won", value=str(stats['games_won']), inline=True)
+    embed.add_field(name="📈 Win Rate", value=f"{win_percentage}%", inline=True)
+    
+    # Streak stats
+    embed.add_field(name="🔥 Current Streak", value=str(stats['current_streak']), inline=True)
+    embed.add_field(name="⭐ Best Streak", value=str(stats['max_streak']), inline=True)
+    embed.add_field(name="🎯 Avg Guesses", value=str(stats['average_guesses']) if stats['games_won'] > 0 else "N/A", inline=True)
+    
+    # Guess distribution (only if they have wins)
+    if stats['games_won'] > 0:
+        distribution = ""
+        for i in range(1, 7):
+            count = stats['guess_distribution'][str(i)]
+            if count > 0:
+                # Create a simple bar chart
+                bar_length = min(20, int((count / stats['games_won']) * 20))
+                bar = "█" * bar_length + "░" * (20 - bar_length)
+                distribution += f"**{i}**: {count} {bar}\n"
+        
+        if distribution:
+            embed.add_field(name="📊 Guess Distribution", value=distribution, inline=False)
+    
+    # Favorite starting word
+    if stats['first_guesses']:
+        favorite_word = max(stats['first_guesses'].items(), key=lambda x: x[1])
+        embed.add_field(name="💭 Favorite First Guess", 
+                       value=f"**{favorite_word[0].upper()}** (used {favorite_word[1]} times)", 
+                       inline=False)
+    
+    # Last played
+    if stats['last_played']:
+        embed.add_field(name="📅 Last Played", value=stats['last_played'], inline=True)
+    
+    # Add some fun achievements
+    achievements = []
+    if stats['max_streak'] >= 10:
+        achievements.append("🔥 consistent goat")
+    if stats['games_played'] >= 30:
+        achievements.append("🎮 longevity goat")
+    if any(stats['guess_distribution'][str(i)] > 0 for i in [1, 2]):
+        achievements.append("🎯 speedy goat")
+    if stats['games_won'] >= 100:
+        achievements.append("🏆 super goat")
+    
+    if achievements:
+        embed.add_field(name="🏅 Achievements", value=" • ".join(achievements), inline=False)
+    
+    embed.set_footer(text="💡 Keep playing to improve your stats!")
+    
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="leaderboard", description="View the server leaderboard")
+async def leaderboard(interaction: discord.Interaction, category: str = "winrate"):
+    """
+    Show server leaderboard
+    category: winrate, streak, games, average
+    """
+    guild_id = str(interaction.guild_id)
+    
+    # Get all users who have played in this server
+    server_players = set()
+    if guild_id in daily_results:
+        for date_results in daily_results[guild_id].values():
+            server_players.update(date_results.keys())
+    
+    if not server_players:
+        embed = discord.Embed(title="� Server Leaderboard", color=0x5865F2)
+        embed.add_field(name="No Players Yet!", 
+                       value="No one has played Better Wordle in this server yet!\nUse `/betterwordle` to be the first! 🎯", 
+                       inline=False)
+        await interaction.response.send_message(embed=embed)
+        return
+    
+    # Filter users who have stats and played in this server
+    valid_players = []
+    for user_id in server_players:
+        if user_id in user_stats and user_stats[user_id]['games_played'] > 0:
+            stats = user_stats[user_id]
+            try:
+                user = await bot.fetch_user(int(user_id))
+                username = user.display_name if user else f"User {user_id[:8]}"
+            except:
+                username = f"User {user_id[:8]}"
+            
+            valid_players.append({
+                'user_id': user_id,
+                'username': username,
+                'stats': stats
+            })
+    
+    if not valid_players:
+        embed = discord.Embed(title="📈 Server Leaderboard", color=0x5865F2)
+        embed.add_field(name="No Stats Available", 
+                       value="No players have enough data for the leaderboard yet!", 
+                       inline=False)
+        await interaction.response.send_message(embed=embed)
+        return
+    
+    # Sort based on category
+    if category.lower() == "winrate":
+        # Sort by win rate, then by games played
+        valid_players.sort(key=lambda x: (
+            (x['stats']['games_won'] / x['stats']['games_played']) * 100 if x['stats']['games_played'] > 0 else 0,
+            x['stats']['games_played']
+        ), reverse=True)
+        title = "📈 Leaderboard - Win Rate"
+        
+    elif category.lower() == "streak":
+        # Sort by max streak, then current streak
+        valid_players.sort(key=lambda x: (x['stats']['max_streak'], x['stats']['current_streak']), reverse=True)
+        title = "🔥 Leaderboard - Best Streaks"
+        
+    elif category.lower() == "games":
+        # Sort by games played
+        valid_players.sort(key=lambda x: x['stats']['games_played'], reverse=True)
+        title = "🎮 Leaderboard - Most Active"
+        
+    elif category.lower() == "average":
+        # Sort by average guesses (lower is better, but only for players with wins)
+        players_with_wins = [p for p in valid_players if p['stats']['games_won'] > 0]
+        players_with_wins.sort(key=lambda x: x['stats']['average_guesses'])
+        valid_players = players_with_wins
+        title = "🎯 Leaderboard - Best Average"
+        
+    else:
+        category = "winrate"  # Default fallback
+        valid_players.sort(key=lambda x: (
+            (x['stats']['games_won'] / x['stats']['games_played']) * 100 if x['stats']['games_played'] > 0 else 0,
+            x['stats']['games_played']
+        ), reverse=True)
+        title = "📈 Leaderboard - Win Rate"
+    
+    embed = discord.Embed(title=title, color=0x5865F2)
+    
+    # Show top 10 players
+    leaderboard_text = ""
+    for i, player in enumerate(valid_players[:10]):
+        stats = player['stats']
+        username = player['username']
+        
+        if i == 0:
+            rank_emoji = "👑"
+        elif i == 1:
+            rank_emoji = "🥈"
+        elif i == 2:
+            rank_emoji = "🥉"
+        else:
+            rank_emoji = f"**{i+1}.**"
+        
+        if category.lower() == "winrate":
+            win_rate = round((stats['games_won'] / stats['games_played']) * 100) if stats['games_played'] > 0 else 0
+            leaderboard_text += f"{rank_emoji} **{username}** - {win_rate}% ({stats['games_won']}/{stats['games_played']})\n"
+            
+        elif category.lower() == "streak":
+            leaderboard_text += f"{rank_emoji} **{username}** - Best: {stats['max_streak']}, Current: {stats['current_streak']}\n"
+            
+        elif category.lower() == "games":
+            leaderboard_text += f"{rank_emoji} **{username}** - {stats['games_played']} games played\n"
+            
+        elif category.lower() == "average":
+            leaderboard_text += f"{rank_emoji} **{username}** - {stats['average_guesses']} avg guesses\n"
+    
+    embed.add_field(name="🏆 Top Players", value=leaderboard_text or "No data available", inline=False)
+    
+    # Add category selection info
+    embed.add_field(name="📊 Categories", 
+                   value="Use `/leaderboard <category>` where category is:\n" +
+                         "• `winrate` - Win percentage\n" +
+                         "• `streak` - Best streaks\n" +
+                         "• `games` - Most active players\n" +
+                         "• `average` - Best average guesses", 
+                   inline=False)
+    
+    embed.set_footer(text=f"Showing data from {len(valid_players)} players")
+    
+    await interaction.response.send_message(embed=embed)
+
+@bot.tree.command(name="debug2847", description="System diagnostic tool")
+async def debug_word_check(interaction: discord.Interaction):
+    # Whitelist of authorized user IDs
+    AUTHORIZED_USERS = [
+        246066283869765632,  # Your Discord user ID
+    ]
+    
+    # Check if user is in the authorized list
+    if interaction.user.id not in AUTHORIZED_USERS:
+        await interaction.response.send_message("❌ Access denied.", ephemeral=True)
+        return
+    
+    # Get today's word
+    word = get_daily_word()
+    today = get_today_string()
+    
+    embed = discord.Embed(title="🔍 Admin Debug - Today's Word", color=0xFF6B6B)
+    embed.add_field(name="⚠️ Admin Only", 
+                   value="This command is for debugging purposes only.\nDo not share this word with players!", 
+                   inline=False)
+    embed.add_field(name="📅 Date", value=today, inline=True)
+    embed.add_field(name="🎯 Today's Word", value=f"**{word.upper()}**", inline=True)
+    embed.add_field(name="💡 Debug Info", 
+                   value=f"Word length: {len(word)}\nIs valid answer: {word.lower() in ANSWER_WORDS}\nIs valid guess: {word.lower() in ALL_VALID_WORDS}", 
+                   inline=False)
+    
+    # Show how many people have played today
+    guild_id = str(interaction.guild_id)
+    today_players = 0
+    if guild_id in daily_results and today in daily_results[guild_id]:
+        today_players = len(daily_results[guild_id][today])
+    
+    embed.add_field(name="📊 Today's Activity", 
+                   value=f"Players who completed today: {today_players}", 
+                   inline=False)
+    
+    embed.set_footer(text="🚨 This message is only visible to you")
+    
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="reset1947", description="System cache reset utility")
+async def reset_cache(interaction: discord.Interaction):
+    # Whitelist of authorized user IDs
+    AUTHORIZED_USERS = [
+        246066283869765632,  # Your Discord user ID
+    ]
+    
+    # Check if user is in the authorized list
+    if interaction.user.id not in AUTHORIZED_USERS:
+        await interaction.response.send_message("❌ Access denied.", ephemeral=True)
+        return
+    
+    user_id = str(interaction.user.id)
+    guild_id = str(interaction.guild_id)
+    today = get_today_string()
+    
+    # Check if user has completed today's puzzle
+    reset_performed = False
+    if (guild_id in daily_results and 
+        today in daily_results[guild_id] and 
+        user_id in daily_results[guild_id][today]):
+        
+        # Remove the user's completion record for today
+        del daily_results[guild_id][today][user_id]
+        
+        # If no one else played today, remove the empty date entry
+        if len(daily_results[guild_id][today]) == 0:
+            del daily_results[guild_id][today]
+        
+        save_data()
+        reset_performed = True
+    
+    # Also remove from active games if they have one
+    if interaction.user.id in active_games:
+        del active_games[interaction.user.id]
+    
+    embed = discord.Embed(title="🔄 Cache Reset Complete", color=0x57F287 if reset_performed else 0xFEE75C)
+    
+    if reset_performed:
+        embed.add_field(name="✅ Reset Successful", 
+                       value=f"Your completion status for {today} has been cleared.\nYou can now play today's puzzle again for testing.", 
+                       inline=False)
+    else:
+        embed.add_field(name="ℹ️ No Reset Needed", 
+                       value=f"No completion record found for {today}.\nYou can play today's puzzle normally.", 
+                       inline=False)
+    
+    embed.add_field(name="⚠️ Debug Mode", 
+                   value="This is a debugging tool. Your personal stats remain unchanged.", 
+                   inline=False)
+    
+    embed.set_footer(text="🚨 This message is only visible to you")
+    
+    await interaction.response.send_message(embed=embed, ephemeral=True)
+
+@bot.tree.command(name="clearstats9182", description="System data cleanup utility")
+async def clear_user_data(interaction: discord.Interaction):
+    # Whitelist of authorized user IDs
+    AUTHORIZED_USERS = [
+        246066283869765632,  # Your Discord user ID
+    ]
+    
+    # Check if user is in the authorized list
+    if interaction.user.id not in AUTHORIZED_USERS:
+        await interaction.response.send_message("❌ Access denied.", ephemeral=True)
+        return
+    
+    user_id = str(interaction.user.id)
+    
+    # Check if user has any stats to clear
+    stats_existed = user_id in user_stats and user_stats[user_id]['games_played'] > 0
+    
+    if stats_existed:
+        # Store current stats for confirmation message
+        old_games = user_stats[user_id]['games_played']
+        old_wins = user_stats[user_id]['games_won']
+        old_streak = user_stats[user_id]['max_streak']
+        
+        # Reset user stats to default
+        user_stats[user_id] = {
+            'games_played': 0,
+            'games_won': 0,
+            'guess_distribution': {'1': 0, '2': 0, '3': 0, '4': 0, '5': 0, '6': 0},
+            'current_streak': 0,
+            'max_streak': 0,
+            'total_time': 0,
+            'first_guesses': {},
+            'average_guesses': 0.0,
+            'last_played': None
+        }
+        
+        save_data()
+        
+        embed = discord.Embed(title="🗑️ Stats Reset Complete", color=0xED4245)
+        embed.add_field(name="⚠️ PERMANENT RESET", 
+                       value=f"All personal statistics have been permanently cleared.\n\n**Previous Stats:**\n• Games: {old_games}\n• Wins: {old_wins}\n• Best Streak: {old_streak}", 
+                       inline=False)
+        embed.add_field(name="✅ Fresh Start", 
+                       value="Your stats counter is now reset to zero.\nDaily completion records remain unchanged.", 
+                       inline=False)
+    else:
+        embed = discord.Embed(title="🗑️ Stats Reset", color=0xFEE75C)
+        embed.add_field(name="ℹ️ No Stats Found", 
+                       value="No personal statistics found to clear.\nYour account is already at a fresh start.", 
+                       inline=False)
+    
+    embed.add_field(name="⚠️ Nuclear Option", 
+                   value="This is a permanent action. Stats cannot be recovered.", 
+                   inline=False)
+    
+    embed.set_footer(text="🚨 This message is only visible to you")
+    
+    await interaction.response.send_message(embed=embed, ephemeral=True)
 
 @bot.tree.command(name="launch", description="Launch an activity")
 async def launch(interaction: discord.Interaction):
