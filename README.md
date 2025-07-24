@@ -1,37 +1,61 @@
-# Discord Wordle Bot
+# Better Wordle Bot
 
-A Discord bot that brings Wordle to your server with interactive gameplay, daily streaks, and automatic summaries!
+A comprehensive Discord bot that brings an enhanced Wordle experience to your server with interactive gameplay, advanced statistics, leaderboards, daily streaks, and automatic summaries!
 
-## Features
+## ✨ Features
 
 ### 🎯 Interactive Gameplay
-- **Click-to-play interface** with buttons and modals
-- **Daily words** - everyone gets the same word each day
-- **5-letter word validation** with expanded dictionary (1000+ words)
-- **Visual feedback** with emoji squares (🟩🟨⬜)
-- **One game per day** per user
+- **Click-to-play interface** with buttons and modals - no more typing commands for each guess!
+- **Daily words** - everyone gets the same word each day using official Wordle word lists
+- **Enhanced validation** with 13,000+ valid words (official Wordle dictionary)
+- **Visual feedback** with emoji squares (🟩🟨⬜) and interactive keyboard display
+- **One game per day** per user with smart duplicate prevention
+- **Performance celebrations** - special messages for incredible plays (1-guess wins!)
+- **Game timing** - tracks how long each game takes
 
-### 🔥 Streak Tracking
-- **Daily streaks** - counts consecutive days with at least 1 completion
-- **Automatic daily summaries** posted at 12:01 AM
-- **Yesterday's results** with user scores and rankings
-- **Server statistics** with success rates
+### � Advanced Statistics
+- **Personal stats** - detailed analytics for each player
+  - Games played, win rate, current/max streaks
+  - Guess distribution with visual bar charts
+  - Average guesses and favorite starting words
+  - Achievement system (speedy goat, consistent goat, etc.)
+- **Server leaderboards** - compete with friends across multiple categories
+  - Win rate rankings
+  - Best streaks
+  - Most active players
+  - Best average guesses
+- **Comprehensive tracking** - all stats persist across games and servers
 
-### 📊 Statistics & Results
-- **Live results** - see today's completions with `/results`
-- **Streak status** - check current streak with `/streak`
-- **Daily summaries** - automatic posts showing yesterday's results
+### 🔥 Streak Tracking & Automation
+- **Server streaks** - counts consecutive days with at least 1 completion
+- **Automatic daily summaries** posted at 12:01 AM with professional formatting
+- **Enhanced results display** - grouped by performance with crown/medal emojis
+- **Success rate tracking** - server-wide statistics and analytics
+- **Fastest completion times** - speed leaderboards for quick solvers
 
-## Commands
+### ⌨️ Visual Enhancements
+- **Interactive keyboard display** - see which letters you've tried at a glance
+- **Enhanced board layout** - numbered rows and clear progress indicators
+- **Performance-based colors** - different celebration colors based on solve speed
+- **Clean embed formatting** - professional Discord embed design
+
+## 🎮 Commands
 
 | Command | Description |
 |---------|-------------|
-| `/wordlebot` | Start a new Wordle game with interactive buttons |
-| `/results` | View today's server results |
-| `/streak` | Check current server streak |
-| `/setchannel` | Set channel for daily summaries (requires Manage Channels permission) |
-| `/stats` | Personal stats (coming soon) |
-| `/launch` | Handle Entry Point requests gracefully |
+| `/betterwordle` | Start a new Better Wordle game with interactive interface |
+| `/mystats` | View your personal detailed statistics and achievements |
+| `/leaderboard [category]` | View server leaderboards (winrate/streak/games/average) |
+| `/results` | View today's server results and completions |
+| `/streak` | Check current server streak status |
+| `/setchannel [channel]` | Set channel for daily summaries (requires Manage Channels) |
+| `/launch` | Handle Discord Activity requests gracefully |
+
+### 🔧 Admin Debug Commands (Hidden)
+*These commands are invisible to regular users and require authorization*
+- `/debug2847` - View today's word for testing
+- `/reset1947` - Reset daily completion for re-testing
+- `/clearstats9182` - Nuclear stats reset (permanent)
 
 ## Setup
 
@@ -54,15 +78,23 @@ pip install -r requirements.txt
 
 # Create environment file
 cp .env.example .env
-# Edit .env with your bot token
+# Edit .env with your bot token and admin user ID
 ```
 
-### 3. Discord Bot Setup
+### 3. Environment Configuration
+Create a `.env` file with:
+```
+DISCORD_BOT_TOKEN=your_bot_token_here
+ADMIN_USER_ID=your_discord_user_id_here
+```
+
+### 4. Discord Bot Setup
 1. Go to [Discord Developer Portal](https://discord.com/developers/applications)
 2. Create a new application
 3. Go to "Bot" section and create a bot
-4. Copy the bot token to your `.env` file
-5. Under "Privileged Gateway Intents", enable:
+4. Copy the bot token to your `.env` file as `DISCORD_BOT_TOKEN`
+5. Add your Discord user ID to `.env` as `ADMIN_USER_ID` (for debug commands)
+6. Under "Privileged Gateway Intents", enable:
    - Message Content Intent (if needed)
 6. Go to "OAuth2" > "URL Generator":
    - Scopes: `bot`, `applications.commands`
@@ -73,7 +105,7 @@ cp .env.example .env
      - Read Message History
 7. Use the generated URL to add the bot to your server
 
-### 4. Run the Bot
+### 5. Run the Bot
 ```bash
 python app.py
 ```

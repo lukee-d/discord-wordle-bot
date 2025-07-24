@@ -10,6 +10,9 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Get admin user ID from environment variable
+ADMIN_USER_ID = int(os.getenv('ADMIN_USER_ID', 0))
+
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
@@ -922,7 +925,7 @@ async def leaderboard(interaction: discord.Interaction, category: str = "winrate
 async def debug_word_check(interaction: discord.Interaction):
     # Whitelist of authorized user IDs
     AUTHORIZED_USERS = [
-        246066283869765632,  # Your Discord user ID
+        ADMIN_USER_ID,  # Admin user from environment variable
     ]
     
     # Check if user is in the authorized list
@@ -962,7 +965,7 @@ async def debug_word_check(interaction: discord.Interaction):
 async def reset_cache(interaction: discord.Interaction):
     # Whitelist of authorized user IDs
     AUTHORIZED_USERS = [
-        246066283869765632,  # Your Discord user ID
+        ADMIN_USER_ID,  # Admin user from environment variable
     ]
     
     # Check if user is in the authorized list
@@ -1017,7 +1020,7 @@ async def reset_cache(interaction: discord.Interaction):
 async def clear_user_data(interaction: discord.Interaction):
     # Whitelist of authorized user IDs
     AUTHORIZED_USERS = [
-        246066283869765632,  # Your Discord user ID
+        ADMIN_USER_ID,  # Admin user from environment variable
     ]
     
     # Check if user is in the authorized list
