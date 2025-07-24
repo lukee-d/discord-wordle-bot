@@ -14,160 +14,14 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix='!', intents=intents)
 
-# Expanded word list with 1000+ valid 5-letter words
-WORD_LIST = [
-    "about", "above", "abuse", "actor", "acute", "admit", "adopt", "adult", "after", "again",
-    "agent", "agree", "ahead", "alarm", "album", "alert", "alien", "align", "alike", "alive",
-    "allow", "alone", "along", "alter", "among", "anger", "angle", "angry", "apart", "apple",
-    "apply", "arena", "argue", "arise", "array", "aside", "asset", "avoid", "awake", "award",
-    "aware", "badly", "baker", "bases", "basic", "beach", "began", "begin", "being", "below",
-    "bench", "billy", "birth", "black", "blame", "blind", "block", "blood", "board", "boost",
-    "booth", "bound", "brain", "brand", "brass", "brave", "bread", "break", "breed", "brief",
-    "bring", "broad", "broke", "brown", "build", "built", "buyer", "cable", "calif", "carry",
-    "catch", "cause", "chain", "chair", "chaos", "charm", "chart", "chase", "cheap", "check",
-    "chest", "chief", "child", "china", "chose", "civil", "claim", "class", "clean", "clear",
-    "click", "climb", "clock", "close", "cloud", "coach", "coast", "could", "count", "court",
-    "cover", "craft", "crash", "crazy", "cream", "crime", "cross", "crowd", "crown", "crude",
-    "curve", "cycle", "daily", "dance", "dated", "dealt", "death", "debut", "delay", "depth",
-    "doing", "doubt", "dozen", "draft", "drama", "drank", "dream", "dress", "drill", "drink",
-    "drive", "drove", "dying", "eager", "eagle", "early", "earth", "eight", "elite", "empty",
-    "enemy", "enjoy", "enter", "entry", "equal", "error", "event", "every", "exact", "exist",
-    "extra", "faith", "false", "fault", "fiber", "field", "fifth", "fifty", "fight", "final",
-    "first", "fixed", "flash", "fleet", "floor", "fluid", "focus", "force", "forth", "forty",
-    "forum", "found", "frame", "frank", "fraud", "fresh", "front", "fruit", "fully", "funny",
-    "giant", "given", "glass", "globe", "going", "grace", "grade", "grand", "grant", "grass",
-    "grave", "great", "green", "gross", "group", "grown", "guard", "guess", "guest", "guide",
-    "happy", "harry", "heart", "heavy", "hence", "henry", "horse", "hotel", "house", "human",
-    "ideal", "image", "index", "inner", "input", "issue", "japan", "jimmy", "joint", "jones",
-    "judge", "known", "label", "large", "laser", "later", "laugh", "layer", "learn", "lease",
-    "least", "leave", "legal", "level", "lewis", "light", "limit", "links", "lives", "local",
-    "logic", "loose", "lower", "lucky", "lunch", "lying", "magic", "major", "maker", "march",
-    "maria", "match", "maybe", "mayor", "meant", "media", "metal", "might", "minor", "minus",
-    "mixed", "model", "money", "month", "moral", "motor", "mount", "mouse", "mouth", "moved",
-    "movie", "music", "needs", "never", "newly", "night", "noise", "north", "noted", "novel",
-    "nurse", "occur", "ocean", "offer", "often", "order", "other", "ought", "paint", "panel",
-    "paper", "party", "peace", "peter", "phase", "phone", "photo", "piano", "piece", "pilot",
-    "pitch", "place", "plain", "plane", "plant", "plate", "point", "pound", "power", "press",
-    "price", "pride", "prime", "print", "prior", "prize", "proof", "proud", "prove", "queen",
-    "quick", "quiet", "quite", "radio", "raise", "range", "rapid", "ratio", "reach", "ready",
-    "realm", "rebel", "refer", "relax", "repay", "reply", "right", "rigid", "river", "robot",
-    "roger", "roman", "rough", "round", "route", "royal", "rural", "scale", "scene", "scope",
-    "score", "sense", "serve", "setup", "seven", "shall", "shape", "share", "sharp", "sheet",
-    "shelf", "shell", "shift", "shine", "shirt", "shock", "shoot", "short", "shown", "side",
-    "sight", "simon", "since", "sixth", "sixty", "sized", "skill", "sleep", "slide", "small",
-    "smart", "smile", "smith", "smoke", "snake", "snow", "social", "solid", "solve", "sorry",
-    "sound", "south", "space", "spare", "speak", "speed", "spend", "spent", "split", "spoke",
-    "sport", "staff", "stage", "stake", "stand", "start", "state", "steam", "steel", "stick",
-    "still", "stock", "stone", "stood", "store", "storm", "story", "strip", "stuck", "study",
-    "stuff", "style", "sugar", "suite", "super", "sweet", "table", "taken", "taste", "taxes",
-    "teach", "teeth", "terry", "texas", "thank", "theft", "their", "theme", "there", "these",
-    "thick", "thing", "think", "third", "those", "three", "threw", "throw", "thumb", "tiger",
-    "tight", "timer", "tired", "title", "today", "topic", "total", "touch", "tough", "tower",
-    "track", "trade", "train", "treat", "trend", "trial", "tribe", "trick", "tried", "tries",
-    "truck", "truly", "trunk", "trust", "truth", "twice", "uncle", "under", "undue", "union",
-    "unity", "until", "upper", "upset", "urban", "usage", "usual", "valid", "value", "video",
-    "virus", "visit", "vital", "vocal", "voice", "waste", "watch", "water", "wheel", "where",
-    "which", "while", "white", "whole", "whose", "woman", "women", "world", "worry", "worse",
-    "worst", "worth", "would", "write", "wrong", "wrote", "young", "youth",
-    
-    # Additional 500+ words for better gameplay
-    "abuse", "acids", "acres", "acted", "actor", "acute", "added", "admin", "admit", "adopt",
-    "adult", "after", "again", "agent", "agree", "ahead", "aimed", "aired", "alarm", "album",
-    "alert", "alien", "align", "alike", "alive", "allow", "alone", "along", "alter", "amber",
-    "amend", "among", "angel", "anger", "angle", "angry", "apart", "apple", "apply", "arena",
-    "argue", "arise", "armed", "armor", "array", "arrow", "aside", "asked", "asset", "avoid",
-    "awake", "award", "aware", "badly", "badge", "baker", "balls", "bands", "banks", "based",
-    "basic", "batch", "beach", "beans", "bears", "beast", "beats", "began", "begin", "being",
-    "bells", "belly", "below", "bench", "bikes", "bills", "birds", "birth", "black", "blade",
-    "blame", "blank", "blast", "bleed", "blend", "bless", "blind", "block", "blood", "blown",
-    "blues", "board", "boats", "bobby", "bones", "bonus", "boost", "booth", "boots", "bound",
-    "boxes", "brain", "brand", "brass", "brave", "bread", "break", "breed", "brick", "bride",
-    "brief", "bring", "broad", "broke", "brown", "brush", "build", "built", "bunch", "burns",
-    "burst", "buses", "buyer", "cable", "cakes", "calls", "camel", "camps", "canal", "candy",
-    "cards", "carry", "cases", "catch", "cause", "caves", "chain", "chair", "chaos", "charm",
-    "chart", "chase", "cheap", "check", "chess", "chest", "child", "china", "chips", "chose",
-    "civil", "claim", "class", "clean", "clear", "click", "cliff", "climb", "clock", "close",
-    "cloth", "cloud", "clubs", "coach", "coast", "coins", "cold", "color", "comes", "comic",
-    "coral", "costs", "couch", "could", "count", "court", "cover", "crack", "craft", "crane",
-    "crash", "crazy", "cream", "creek", "crime", "crops", "cross", "crowd", "crown", "crude",
-    "curve", "cyber", "cycle", "daily", "dance", "dated", "deals", "dealt", "death", "debut",
-    "decks", "delay", "depth", "desks", "dial", "dirty", "doing", "doors", "doubt", "dozen",
-    "draft", "drama", "drank", "drawn", "dream", "dress", "dried", "drill", "drink", "drive",
-    "drove", "drums", "drunk", "dying", "eager", "eagle", "early", "earth", "eight", "elite",
-    "empty", "enemy", "enjoy", "enter", "entry", "equal", "error", "event", "every", "exact",
-    "exist", "extra", "faced", "facts", "faith", "falls", "false", "farms", "fatal", "fault",
-    "feast", "fiber", "field", "fifth", "fifty", "fight", "files", "fills", "films", "final",
-    "finds", "fired", "fires", "first", "fixed", "flags", "flame", "flash", "fleet", "flies",
-    "float", "flood", "floor", "flour", "flows", "fluid", "focus", "folks", "foods", "force",
-    "forms", "forth", "forty", "forum", "found", "frame", "frank", "fraud", "fresh", "front",
-    "frost", "fruit", "fully", "funds", "funny", "games", "gates", "gave", "giant", "gifts",
-    "girls", "given", "glass", "globe", "glory", "goals", "going", "goods", "grace", "grade",
-    "grain", "grand", "grant", "grass", "grave", "great", "green", "greet", "grief", "gross",
-    "group", "grown", "grows", "guard", "guess", "guest", "guide", "guilt", "habit", "hands",
-    "happy", "harsh", "hated", "haven", "heads", "heals", "heard", "heart", "heats", "heavy",
-    "hence", "herbs", "hills", "hints", "hired", "holds", "holes", "honey", "honor", "hooks",
-    "hoped", "hopes", "horse", "hotel", "hours", "house", "human", "humor", "hurry", "hurts",
-    "icons", "ideal", "ideas", "image", "index", "inner", "input", "issue", "items", "japan",
-    "jeans", "jewel", "joint", "jokes", "jones", "judge", "juice", "jumps", "keeps", "kills",
-    "kinds", "kings", "knife", "knock", "known", "knows", "label", "lacks", "lakes", "lands",
-    "large", "laser", "later", "laugh", "laws", "layer", "leads", "learn", "lease", "least",
-    "leave", "legal", "lemon", "level", "lewis", "light", "liked", "likes", "limit", "lined",
-    "lines", "links", "lions", "lists", "lived", "liver", "lives", "loads", "loans", "local",
-    "locks", "logic", "looks", "loose", "lords", "loses", "loved", "lover", "loves", "lower",
-    "lucky", "lunch", "lying", "magic", "mails", "major", "makes", "maker", "males", "march",
-    "maria", "marks", "marry", "masks", "match", "maybe", "mayor", "meals", "means", "meant",
-    "meats", "media", "meets", "melon", "melts", "mercy", "merge", "merit", "merry", "metal",
-    "meter", "metro", "might", "miles", "minds", "mines", "minor", "minus", "mixed", "mixer",
-    "mixes", "modal", "model", "modes", "money", "monks", "month", "moral", "motor", "mount",
-    "mouse", "mouth", "moved", "moves", "movie", "music", "named", "names", "nasty", "needs",
-    "nerve", "never", "newly", "night", "nodes", "noise", "north", "noted", "notes", "novel",
-    "nurse", "ocean", "occur", "offer", "often", "older", "olive", "opens", "opera", "order",
-    "organ", "other", "ought", "owned", "owner", "oxide", "paced", "pages", "paint", "pairs",
-    "panel", "panic", "pants", "paper", "parks", "parts", "party", "pasta", "patch", "paths",
-    "pause", "peace", "peach", "peaks", "pearl", "penny", "peter", "phase", "phone", "photo",
-    "piano", "picks", "piece", "pilot", "pipes", "pitch", "place", "plain", "plane", "plant",
-    "plate", "plays", "plaza", "plots", "poems", "point", "polar", "polls", "pools", "pound",
-    "pours", "power", "press", "price", "pride", "prime", "print", "prior", "prize", "proof",
-    "props", "proud", "prove", "pulls", "pulse", "pumps", "punch", "pupil", "queen", "query",
-    "quest", "queue", "quick", "quiet", "quite", "radio", "rails", "rains", "raise", "range",
-    "ranks", "rapid", "rates", "ratio", "reach", "reads", "ready", "realm", "rebel", "refer",
-    "reign", "relax", "relay", "remix", "repay", "reply", "reset", "rider", "rides", "ridge",
-    "rifle", "right", "rigid", "rings", "rises", "risks", "rival", "river", "roads", "robot",
-    "rocks", "roger", "roles", "rolls", "roman", "rooms", "roots", "roses", "rough", "round",
-    "route", "royal", "rules", "ruins", "rural", "sadly", "safer", "saint", "salad", "sales",
-    "salon", "sandy", "sauce", "saved", "saves", "scale", "scare", "scene", "scent", "scope",
-    "score", "scots", "scout", "scrub", "seals", "seats", "seeds", "seeks", "seems", "sells",
-    "sends", "sense", "serve", "setup", "seven", "shade", "shake", "shall", "shame", "shape",
-    "share", "shark", "sharp", "sheep", "sheet", "shelf", "shell", "shift", "shine", "ships",
-    "shirt", "shock", "shoes", "shoot", "shops", "shore", "short", "shown", "shows", "sides",
-    "sight", "signs", "silly", "simon", "since", "sings", "sinks", "sites", "sixth", "sixty",
-    "sized", "sizes", "skill", "skins", "skips", "skull", "slate", "slave", "sleep", "slide",
-    "slope", "slots", "small", "smart", "smile", "smith", "smoke", "snake", "snaps", "snowy",
-    "socks", "solar", "solid", "solve", "songs", "sorry", "sorts", "souls", "sound", "south",
-    "space", "spare", "spark", "speak", "specs", "speed", "spell", "spend", "spent", "spine",
-    "split", "spoke", "sport", "spray", "squad", "staff", "stage", "stair", "stake", "stamp",
-    "stand", "stars", "start", "state", "stays", "steam", "steel", "steep", "steps", "stern",
-    "stick", "still", "sting", "stink", "stock", "stone", "stood", "stops", "store", "storm",
-    "story", "strap", "strip", "stuck", "study", "stuff", "style", "sucks", "sugar", "suite",
-    "sunny", "super", "surge", "swamp", "swear", "sweat", "sweet", "swept", "swift", "swing",
-    "sword", "table", "taken", "takes", "tales", "talks", "tanks", "tapes", "tasks", "taste",
-    "taxes", "teach", "teams", "tears", "teeth", "tells", "terms", "terry", "tests", "texas",
-    "texts", "thank", "theft", "their", "theme", "there", "these", "thick", "thing", "think",
-    "third", "those", "three", "threw", "throw", "thumb", "thus", "tiger", "tight", "tiles",
-    "timer", "times", "tiny", "tired", "title", "toast", "today", "token", "tone", "tools",
-    "topic", "total", "touch", "tough", "tower", "towns", "toxic", "track", "trade", "trail",
-    "train", "trait", "trash", "treat", "trees", "trend", "trial", "tribe", "trick", "tried",
-    "tries", "trips", "truck", "truly", "trunk", "trust", "truth", "tubes", "tunes", "turns",
-    "twice", "twist", "typed", "types", "uncle", "under", "undue", "union", "unity", "until",
-    "upper", "upset", "urban", "urged", "usage", "users", "uses", "usual", "valid", "value",
-    "vault", "venue", "video", "views", "viral", "virus", "visit", "vital", "vocal", "voice",
-    "votes", "wages", "waist", "waits", "walks", "walls", "wants", "waste", "watch", "water",
-    "waves", "wealth", "wears", "weird", "wells", "wheel", "where", "which", "while", "white",
-    "whole", "whose", "widow", "width", "winds", "wines", "wings", "wipes", "wired", "wires",
-    "witch", "woman", "women", "woods", "words", "works", "world", "worry", "worse", "worst",
-    "worth", "would", "wound", "write", "wrong", "wrote", "yards", "years", "young", "yours",
-    "youth", "zones"
-]
+# official wordle list
+with open("wordle-answers-alphabetical.txt") as f:
+    ANSWER_WORDS = [line.strip() for line in f]
+
+with open("wordle-allowed-guesses.txt") as f:
+    VALID_GUESSES = set(line.strip() for line in f)
+
+ALL_VALID_WORDS = set(ANSWER_WORDS).union(VALID_GUESSES)
 
 # Game storage with proper daily results
 active_games = {}  # Maps user ID to game data
@@ -254,7 +108,7 @@ def get_daily_word():
     """Get today's word"""
     today = datetime.date.today()
     random.seed(today.toordinal())
-    word = random.choice(WORD_LIST)
+    word = random.choice(ANSWER_WORDS)
     random.seed()
     return word
 
@@ -365,9 +219,9 @@ async def post_daily_summary(guild_id):
         yesterday not in daily_results[guild_id] or 
         len(daily_results[guild_id][yesterday]) == 0):
         # No one played yesterday
-        embed = discord.Embed(title="📊 Daily Wordle Summary", color=0xED4245)
+        embed = discord.Embed(title="📊 Daily Better Wordle Summary", color=0xED4245)
         embed.add_field(name="No Activity Yesterday", 
-                       value="No one completed yesterday's Wordle! 😔\nStreak broken.", 
+                       value="No one completed yesterday's Better Wordle! 😔\nStreak broken.", 
                        inline=False)
         await channel.send(embed=embed)
         return
@@ -376,7 +230,7 @@ async def post_daily_summary(guild_id):
     streak_count = guild_settings[guild_id].get('streak_count', 0)
     
     # Create the summary embed like the image
-    embed = discord.Embed(title="📊 Daily Wordle Summary", color=0x5865F2)
+    embed = discord.Embed(title="📊 Daily Better Wordle Summary", color=0x5865F2)
     
     # Add streak info
     if streak_count > 0:
@@ -468,25 +322,39 @@ class GuessModal(discord.ui.Modal, title='Make a Guess'):
         guess_word = self.guess.value.lower()
         
         # Validate the guess
-        if guess_word not in WORD_LIST:
+        if guess_word not in ALL_VALID_WORDS:
             # Send a clear error message instead of another modal
-            await interaction.response.send_message(
-                f"❌ **'{guess_word.upper()}'** is not a valid word!\n" +
-                "Please enter a valid 5-letter word from our dictionary.",
-                ephemeral=True
-            )
+            try:
+                await interaction.response.send_message(
+                    f"❌ **'{guess_word.upper()}'** is not a valid word!\n" +
+                    "Please enter a valid 5-letter word from our dictionary.",
+                    ephemeral=True
+                )
+            except discord.errors.InteractionResponded:
+                await interaction.followup.send(
+                    f"❌ **'{guess_word.upper()}'** is not a valid word!",
+                    ephemeral=True
+                )
             return
         
         success, feedback = self.game.make_guess(guess_word)
         
         if not success:
-            await interaction.response.send_message(feedback, ephemeral=True)
+            try:
+                await interaction.response.send_message(feedback, ephemeral=True)
+            except discord.errors.InteractionResponded:
+                await interaction.followup.send(feedback, ephemeral=True)
             return
         
         # Create the updated board display
-        embed = discord.Embed(title="🎯 Wordle Bot", color=0x2F3136)
+        embed = discord.Embed(title="🎯 Better Wordle", color=0x2F3136)
         embed.add_field(name="Your Progress", value=self.game.get_board_display(), inline=False)
         embed.add_field(name=f"Guesses: {len(self.game.guesses)}/{self.game.max_guesses}", value="\u200b", inline=False)
+        
+        # Show the guess that was just made
+        embed.add_field(name="✅ Valid Guess!", 
+                       value=f"**'{guess_word.upper()}'** {feedback}", 
+                       inline=False)
         
         if self.game.completed:
             # Save result to daily results
@@ -517,10 +385,16 @@ class GuessModal(discord.ui.Modal, title='Make a Guess'):
             if user_id in active_games:
                 del active_games[user_id]
             
-            await interaction.response.edit_message(embed=embed, view=None)
+            try:
+                await interaction.response.edit_message(embed=embed, view=None)
+            except discord.errors.InteractionResponded:
+                await interaction.edit_original_response(embed=embed, view=None)
         else:
             view = WordleView(self.game)
-            await interaction.response.edit_message(embed=embed, view=view)
+            try:
+                await interaction.response.edit_message(embed=embed, view=view)
+            except discord.errors.InteractionResponded:
+                await interaction.edit_original_response(embed=embed, view=view)
 
 class WordleView(discord.ui.View):
     def __init__(self, game):
@@ -536,7 +410,7 @@ class WordleView(discord.ui.View):
     async def give_up(self, interaction: discord.Interaction, button: discord.ui.Button):
         user_id = interaction.user.id
         
-        embed = discord.Embed(title="🎯 Wordle - Game Over", color=0xED4245)
+        embed = discord.Embed(title="🎯 Better Wordle - Game Over", color=0xED4245)
         embed.add_field(name="You gave up!", value=f"The word was: **{self.game.answer.upper()}**", inline=False)
         embed.add_field(name="Your Progress", value=self.game.get_board_display(), inline=False)
         
@@ -564,8 +438,8 @@ async def on_ready():
     except Exception as e:
         print(f'Failed to sync: {e}')
 
-@bot.tree.command(name="wordlebot", description="Start a new Wordle game!")
-async def wordlebot(interaction: discord.Interaction):
+@bot.tree.command(name="betterwordle", description="Start a new Better Wordle game!")
+async def betterwordle(interaction: discord.Interaction):
     user_id = interaction.user.id
     guild_id = interaction.guild_id
     
@@ -595,7 +469,7 @@ async def wordlebot(interaction: discord.Interaction):
     active_games[user_id] = game
     
     # Create initial embed
-    embed = discord.Embed(title="🎯 Daily Wordle", color=0x2F3136)
+    embed = discord.Embed(title="🎯 Better Wordle - Daily Challenge", color=0x2F3136)
     embed.add_field(name="Your Progress", value=game.get_board_display(), inline=False)
     embed.add_field(name=f"Guesses: {len(game.guesses)}/{game.max_guesses}", value="\u200b", inline=False)
     embed.add_field(name="How to Play", value="Click 'Make Guess' to enter your 5-letter word!\n🟩 = Correct letter and position\n🟨 = Correct letter, wrong position\n⬜ = Letter not in word", inline=False)
@@ -613,10 +487,10 @@ async def results(interaction: discord.Interaction):
     guild_id = str(interaction.guild_id)
     today = get_today_string()
     
-    embed = discord.Embed(title=f"📊 Daily Wordle Results - {today}", color=0x5865F2)
+    embed = discord.Embed(title=f"📊 Daily Better Wordle Results - {today}", color=0x5865F2)
     
     if guild_id not in daily_results or today not in daily_results[guild_id]:
-        embed.add_field(name="No Results Yet", value="No one has completed today's Wordle yet!\nUse `/wordlebot` to start playing!", inline=False)
+        embed.add_field(name="No Results Yet", value="No one has completed today's Better Wordle yet!\nUse `/betterwordle` to start playing!", inline=False)
         await interaction.response.send_message(embed=embed)
         return
     
@@ -654,7 +528,7 @@ async def results(interaction: discord.Interaction):
 @bot.tree.command(name="stats", description="Show your Wordle statistics")
 async def stats(interaction: discord.Interaction):
     try:
-        embed = discord.Embed(title="📊 Your Wordle Stats", color=0x5865F2)
+        embed = discord.Embed(title="📊 Your Better Wordle Stats", color=0x5865F2)
         embed.add_field(name="Coming Soon!", value="Personal stats tracking will be added in the next update!\nFor now, use `/results` to see today's server results.", inline=False)
         await interaction.response.send_message(embed=embed, ephemeral=True)
     except discord.errors.InteractionResponded:
@@ -670,7 +544,7 @@ async def stats(interaction: discord.Interaction):
 @bot.tree.command(name="launch", description="Launch an activity")
 async def launch(interaction: discord.Interaction):
     embed = discord.Embed(title="🚀 Activity Not Available", color=0xFEE75C)
-    embed.add_field(name="Discord Activity Disabled", value="The Discord Activity feature is not currently available.\nUse `/wordlebot` to play Wordle with the interactive interface!", inline=False)
+    embed.add_field(name="Discord Activity Disabled", value="The Discord Activity feature is not currently available.\nUse `/betterwordle` to play Wordle with the interactive interface!", inline=False)
     await interaction.response.send_message(embed=embed, ephemeral=True)
 
 @bot.tree.command(name="setchannel", description="Set the channel for daily Wordle summaries")
@@ -694,7 +568,7 @@ async def set_channel(interaction: discord.Interaction, channel: discord.TextCha
     
     embed = discord.Embed(title="✅ Channel Set!", color=0x57F287)
     embed.add_field(name="Daily Summaries Enabled", 
-                   value=f"Daily Wordle summaries will be posted in {channel.mention} at 12:01 AM!\n\nI'll show:\n🔥 Streak count\n📊 Yesterday's results\n📈 Server stats", 
+                   value=f"Daily Better Wordle summaries will be posted in {channel.mention} at 12:01 AM!\n\nI'll show:\n🔥 Streak count\n📊 Yesterday's results\n📈 Server stats", 
                    inline=False)
     
     await interaction.response.send_message(embed=embed)
@@ -711,7 +585,7 @@ async def streak_command(interaction: discord.Interaction):
     
     streak_count = guild_settings[guild_id].get('streak_count', 0)
     
-    embed = discord.Embed(title="🔥 Server Wordle Streak", color=0x5865F2)
+    embed = discord.Embed(title="🔥 Server Better Wordle Streak", color=0x5865F2)
     
     if streak_count > 0:
         embed.add_field(name=f"Current Streak: {streak_count} days!", 
@@ -720,7 +594,7 @@ async def streak_command(interaction: discord.Interaction):
         embed.color = 0x57F287
     else:
         embed.add_field(name="No Active Streak", 
-                       value="Start a streak by having at least one person complete today's Wordle!", 
+                       value="Start a streak by having at least one person complete today's Better Wordle!", 
                        inline=False)
         embed.color = 0xED4245
     
